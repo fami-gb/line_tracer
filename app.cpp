@@ -60,6 +60,7 @@ void BrightnessCalibration() {
   bool whiteCalibrated = false;
   g_display.showChar('B');
   fprintf(fp, "黒ラインの上にセンサを配置してください。\n");
+  fprintf(fp, "左ボタンで黒の輝度を測定します(右ボタンで黒輝度を確定します)。\n");
   while (1) {
     if (g_button.isLeftPressed() && !blackCalibrated) {
       blackCalibrated = true;
@@ -71,8 +72,8 @@ void BrightnessCalibration() {
 
       if (g_button.isRightPressed()) {
         fprintf(fp, "黒の輝度測定が終了しました。\n");
+        break;
       }
-      break;
     }
   }
 }
