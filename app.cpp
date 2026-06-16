@@ -64,6 +64,7 @@ void BrightnessCalibration() {
   while (1) {
     if (g_button.isLeftPressed() && !blackCalibrated) {
       blackCalibrated = true;
+      fprintf(fp, "黒の輝度を測定中...\n");
     }
 
     if (blackCalibrated) {
@@ -72,10 +73,38 @@ void BrightnessCalibration() {
 
       if (g_button.isRightPressed()) {
         fprintf(fp, "黒の輝度測定が終了しました。\n");
+        fprintf(fp, "黒の輝度: %d\n", BlackBrightness);
         break;
       }
     }
   }
+
+  g_display.showChar('W');
+  fprintf(fp, "白ラインの上にセンサを配置してください。\n");
+  fprintf(fp, "左ボタンで白の輝度を測定します(右ボタンで白輝度を確定します)。\n");
+  while (1) {
+    if (g_button.isLeftPressed() && !whiteCalibrated) {
+      whiteCalibrated = true;
+      fprintf(fp, "白の輝度を測定中...\n");
+    }
+
+    if (whiteCalibrated) {
+      WhiteBrightness = g_colorSensor.getReflection();
+      g_display.showNumber(WhiteBrightness);
+
+      if (g_button.isRightPressed()) {
+        fprintf(fp, "白の輝度測定が終了しました。\n");
+        fprintf(fp, "白の輝度: %d\n", WhiteBrightness);
+        blackCalibrated = false;
+        whiteCalibrated = false;
+        break;
+      }
+    }
+  }
+
+  targetBrightness = (BlackBrightness + WhiteBrightness) / 2;
+  fprintf(fp, "輝度のキャリブレーションが完了しました。\n");
+  fprintf(fp, "目標輝度: %d\n", targetBrightness);
 }
 
 /* メインタスク(起動時にのみ関数コールされる) */
