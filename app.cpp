@@ -133,7 +133,7 @@ double calculatePid(int error) {
   static double previousError = 0.0;
   static double integral = 0.0;
   static double previousDerivative = 0.0;
-  const alpha = 0.7;
+  const int alpha = 0.7;
   const double Kp = 1.0; // 比例ゲイン
   const double Ki = 0.1; // 積分ゲイン
   const double Kd = 0.05; // 微分ゲイン
