@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <cmath>
 #include <array>
 
@@ -147,8 +148,8 @@ double calculatePid(int error) {
   previousDerivative = derivative; // 前回の微分を更新
   previousTime = currentTime; // 前回の時間を更新
 
-  integral = std::clamp(integral, -100.0, 100.0); // 積分項の飽和制限
-  derivative = std::clamp(derivative, -100.0, 100.0); // 微分項の飽和制限
+  integral = std::max(std::min(integral, 100.0), -100.0); // 積分項の飽和制限
+  derivative = std::max(std::min(derivative, 100.0), -100.0); // 微分項の飽和制限
 
   double control = Kp * error + Ki * integral + Kd * derivative;
   return control;
