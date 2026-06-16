@@ -13,6 +13,7 @@
 #include <libcpp/spike/ColorSensor.h>
 #include <libcpp/spike/Button.h>
 #include <libcpp/spike/Clock.h>
+#include <libcpp/spike/Motor.h>
 #include <serial/serial.h>
 #include <serial/newlib.h>
 #include <syssvc/serial.h>
@@ -27,6 +28,8 @@ extern "C" {
 using namespace spikeapi;
 IMU g_imu;
 Display g_display;
+Motor g_right_motor(EPort::PORT_A);
+Motor g_left_motor(EPort::PORT_B);
 ForceSensor g_forceSensor(EPort::PORT_D);
 ColorSensor g_colorSensor(EPort::PORT_E);
 ColorSensor::HSV g_hsv;
@@ -120,10 +123,41 @@ void main_task(intptr_t unused) {
   // フォースセンサのボタンが押されるまで待機
   fprintf(fp, "フォースセンサを押してください\n");
   while(!g_forceSensor.isPressed(0.5f)) {} 
+  g_clock.reset();
   sta_cyc(TRACER_TASK_CYC); 
   ext_tsk();
 }
 
-void tracer_task(intptr_t unused) {
+double calculatePid(int error) {
+  static uint64_t previousTime = 0;
+  static double previousError = 0.0;
+  static double integral = 0.0;
+  static double previousDerivative = 0.0;
+  const alpha = 0.7;
+  const double Kp = 1.0; // 比例ゲイン
+  const double Ki = 0.1; // 積分ゲイン
+  const double Kd = 0.05; // 微分ゲイン
 
+  uint64_t currentTime = msNow() / 1000.0; // 現在の時間を秒単位で取得
+  uint64_t dt = currentTime - previousTime; // 前回の時間からの経過時間を計算
+
+  integral += error * dt; // 積分項の計算
+  double derivative = (alpha * (error - previousError) + (1 - alpha) * previousDerivative) / dt; // LPFを適用
+  previousError = error; // 前回の誤差を更新
+  previousDerivative = derivative; // 前回の微分を更新
+  previousTime = currentTime; // 前回の時間を更新
+
+  integral = std::clamp(integral, -100.0, 100.0); // 積分項の飽和制限
+  derivative = std::clamp(derivative, -100.0, 100.0); // 微分項の飽和制限
+
+  double control = Kp * error + Ki * integral + Kd * derivative;
+  return control;
+}
+
+void tracer_task(intptr_t unused) {
+  int error = g_colorSensor.getReflection() - targetBrightness;
+  double control = calculatePid(error);
+
+  g_right_motor.setPower(30 + control);
+  g_left_motor.setPower(30 - control);
 }
