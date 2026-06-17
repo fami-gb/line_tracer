@@ -30,7 +30,7 @@ namespace {
   using namespace spikeapi;
   Display g_display;
   Motor g_right_motor(EPort::PORT_A);
-  Motor g_left_motor(EPort::PORT_B);
+  Motor g_left_motor(EPort::PORT_B, Motor::EDirection::COUNTERCLOCKWISE);
   ForceSensor g_forceSensor(EPort::PORT_D);
   ColorSensor g_colorSensor(EPort::PORT_E);
   Button g_button;
