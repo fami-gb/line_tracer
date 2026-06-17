@@ -129,9 +129,14 @@ void main_task(intptr_t unused) {
   ext_tsk();
 }
 
-double calculatePid(int error) {
-  static uint64_t previousTime = 0;
-  static double previousError = 0.0;
+template <typename T>
+T clamp(T value, T min_val=static_cast<T>(-100), T max_val=static_cast<T>(100)) {
+  return std::max(std::min(value, max_val), min_val);
+}
+
+int calculatePid(int error) {
+  static uint64_t previousTime = 0; // ms
+  static int previousError = 0;
   static double integral = 0.0;
   static double previousDerivative = 0.0;
   const double alpha = 0.7;
@@ -139,8 +144,8 @@ double calculatePid(int error) {
   const double Ki = 0.1; // 積分ゲイン
   const double Kd = 0.05; // 微分ゲイン
 
-  double currentTime = msNow() / 1000.0; // 現在の時間を秒単位で取得
-  double dt = previousTime ? currentTime - previousTime : 0.008; // 前回の時間からの経過時間を計算
+  uint64_t currentTime = msNow();
+  double dt = previousTime ? (currentTime - previousTime) / 1000.0 : 0.008; // ms→秒に変換して経過時間を計算
 
   integral += error * dt; // 積分項の計算
   double derivative = (alpha * (error - previousError) / dt + (1 - alpha) * previousDerivative); // LPFを適用
@@ -148,17 +153,23 @@ double calculatePid(int error) {
   previousDerivative = derivative; // 前回の微分を更新
   previousTime = currentTime; // 前回の時間を更新
 
-  integral = std::max(std::min(integral, 100.0), -100.0); // 積分項の飽和制限
-  derivative = std::max(std::min(derivative, 100.0), -100.0); // 微分項の飽和制限
+  integral = clamp(integral); // 積分項の飽和制限
+  derivative = clamp(derivative); // 微分項の飽和制限
 
   double control = Kp * error + Ki * integral + Kd * derivative;
-  return control;
+  return static_cast<int>(std::round(control));
 }
 
 void tracer_task(intptr_t unused) {
-  int error = g_colorSensor.getReflection() - static_cast<int32_t>(targetBrightness);
-  double control = calculatePid(error);
+  if (g_forceSensor.isPressed(0.5f)) {
+    stp_cyc(TRACER_TASK_CYC);
+  }
 
-  g_right_motor.setPower(static_cast<int>(30 + control));
-  g_left_motor.setPower(static_cast<int>(30 - control));
+  int error = g_colorSensor.getReflection() - targetBrightness;
+  int control = calculatePid(error);
+
+  g_right_motor.setPower(clamp(30 + control));
+  g_left_motor.setPower(clamp(30 - control));
+
+  ext_tsk();
 }
