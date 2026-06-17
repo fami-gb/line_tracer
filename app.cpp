@@ -33,7 +33,6 @@ namespace {
   Motor g_left_motor(EPort::PORT_B);
   ForceSensor g_forceSensor(EPort::PORT_D);
   ColorSensor g_colorSensor(EPort::PORT_E);
-  ColorSensor::HSV g_hsv;
   Button g_button;
   Clock g_clock;
   FILE *fp;
@@ -132,13 +131,13 @@ double calculatePid(int error) {
   static double previousError = 0.0;
   static double integral = 0.0;
   static double previousDerivative = 0.0;
-  const int alpha = 0.7;
+  const double alpha = 0.7;
   const double Kp = 1.0; // 比例ゲイン
   const double Ki = 0.1; // 積分ゲイン
   const double Kd = 0.05; // 微分ゲイン
 
-  uint64_t currentTime = msNow() / 1000.0; // 現在の時間を秒単位で取得
-  uint64_t dt = dt ? currentTime - previousTime : 0.008; // 前回の時間からの経過時間を計算
+  double currentTime = msNow() / 1000.0; // 現在の時間を秒単位で取得
+  double dt = previousTime ? currentTime - previousTime : 0.008; // 前回の時間からの経過時間を計算
 
   integral += error * dt; // 積分項の計算
   double derivative = (alpha * (error - previousError) / dt + (1 - alpha) * previousDerivative); // LPFを適用
@@ -154,9 +153,9 @@ double calculatePid(int error) {
 }
 
 void tracer_task(intptr_t unused) {
-  int error = g_colorSensor.getReflection() - targetBrightness;
+  int error = g_colorSensor.getReflection() - static_cast<int32_t>(targetBrightness);
   double control = calculatePid(error);
 
-  g_right_motor.setPower(30 + control);
-  g_left_motor.setPower(30 - control);
+  g_right_motor.setPower(static_cast<int>(30 + control));
+  g_left_motor.setPower(static_cast<int>(30 - control));
 }
