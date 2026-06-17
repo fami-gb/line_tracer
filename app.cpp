@@ -125,6 +125,7 @@ void main_task(intptr_t unused) {
   fprintf(fp, "フォースセンサを押してください\n");
   while(!g_forceSensor.isPressed(0.5f)) {} 
   g_clock.reset();
+  fprintf(fp, "フォースセンサが押されました。\n");
   sta_cyc(TRACER_TASK_CYC); 
   ext_tsk();
 }
