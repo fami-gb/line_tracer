@@ -44,11 +44,11 @@ uint64_t msNow() { return g_clock.now() / 1000; }
 void SerialCalibration() {
     // Bluetooth接続が確立されるまで待機
     bool connected = false;
+    ER err;
     while (!connected) {
-        ER err = serial_opn_por(SIO_BLUETOOTH_PORTID);
-        if(err == E_OK) connected = true;
+        err = serial_opn_por(SIO_BLUETOOTH_PORTID);
         fp = serial_open_newlib_file(SIO_BLUETOOTH_PORTID);
-        if (fp != nullptr) connected = true;
+        if (err == E_OK && fp != nullptr) connected = true;
     }
 }
 
@@ -95,8 +95,6 @@ void BrightnessCalibration() {
       if (g_button.isRightPressed()) {
         fprintf(fp, "白の輝度測定が終了しました。\n");
         fprintf(fp, "白の輝度: %d\n", WhiteBrightness);
-        blackCalibrated = false;
-        whiteCalibrated = false;
         break;
       }
     }
@@ -119,9 +117,14 @@ void main_task(intptr_t unused) {
 
   // フォースセンサのボタンが押されるまで待機
   fprintf(fp, "フォースセンサを押してください\n");
-  while(!g_forceSensor.isPressed(0.5f)) {} 
-  g_clock.reset();
+  while(1) {
+    if (g_forceSensor.isPressed(0.5f)) {
+      while (g_forceSensor.isTouched()) { }
+      break;
+    }
+  } 
   fprintf(fp, "フォースセンサが押されました。\n");
+  g_clock.reset();
   sta_cyc(TRACER_TASK_CYC); 
   ext_tsk();
 }
