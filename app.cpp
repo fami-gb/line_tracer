@@ -53,10 +53,6 @@ void SerialCalibration() {
     }
 }
 
-void ColorJugde(ColorSensor::HSV &hsv) {
-
-}
-
 void BrightnessCalibration() {
   fprintf(fp, "輝度測定を開始します。\n");
   int BlackBrightness = -1;
@@ -142,7 +138,7 @@ double calculatePid(int error) {
   const double Kd = 0.05; // 微分ゲイン
 
   uint64_t currentTime = msNow() / 1000.0; // 現在の時間を秒単位で取得
-  uint64_t dt = currentTime - previousTime; // 前回の時間からの経過時間を計算
+  uint64_t dt = dt ? currentTime - previousTime : 0.008; // 前回の時間からの経過時間を計算
 
   integral += error * dt; // 積分項の計算
   double derivative = (alpha * (error - previousError) / dt + (1 - alpha) * previousDerivative); // LPFを適用
