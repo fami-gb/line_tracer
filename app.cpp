@@ -143,7 +143,7 @@ double calculatePid(int error) {
   uint64_t dt = currentTime - previousTime; // 前回の時間からの経過時間を計算
 
   integral += error * dt; // 積分項の計算
-  double derivative = (alpha * (error - previousError) + (1 - alpha) * previousDerivative) / dt; // LPFを適用
+  double derivative = (alpha * (error - previousError) / dt + (1 - alpha) * previousDerivative); // LPFを適用
   previousError = error; // 前回の誤差を更新
   previousDerivative = derivative; // 前回の微分を更新
   previousTime = currentTime; // 前回の時間を更新
