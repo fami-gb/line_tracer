@@ -26,18 +26,19 @@ extern "C" {
   void* __dso_handle __attribute__((weak)) = (void*)-1;
 }
 
-using namespace spikeapi;
-IMU g_imu;
-Display g_display;
-Motor g_right_motor(EPort::PORT_A);
-Motor g_left_motor(EPort::PORT_B);
-ForceSensor g_forceSensor(EPort::PORT_D);
-ColorSensor g_colorSensor(EPort::PORT_E);
-ColorSensor::HSV g_hsv;
-Button g_button;
-Clock g_clock;
-FILE *fp;
-int targetBrightness = 0;
+namespace {
+  using namespace spikeapi;
+  Display g_display;
+  Motor g_right_motor(EPort::PORT_A);
+  Motor g_left_motor(EPort::PORT_B);
+  ForceSensor g_forceSensor(EPort::PORT_D);
+  ColorSensor g_colorSensor(EPort::PORT_E);
+  ColorSensor::HSV g_hsv;
+  Button g_button;
+  Clock g_clock;
+  FILE *fp;
+  int targetBrightness = 0;
+}
 
 uint64_t msNow() { return g_clock.now() / 1000; }
 
