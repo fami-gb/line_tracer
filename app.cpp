@@ -163,6 +163,8 @@ int calculatePid(int error) {
 void tracer_task(intptr_t unused) {
   if (g_forceSensor.isPressed(0.5f)) {
     stp_cyc(TRACER_TASK_CYC);
+    ext_tsk();
+    return;
   }
 
   int error = g_colorSensor.getReflection() - targetBrightness;
