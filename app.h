@@ -8,7 +8,8 @@ extern "C" {
 
 /* タスク優先度 */
 #define MAIN_PRIORITY    5 /* メインタスク */
-#define TRACER_PRIORITY  6 /* ライントレーサータスク */
+#define TRACER_PRIORITY       6 /* ライントレーサータスク */
+#define CALIBRATION_PRIORITY  5 /* キャリブレーションタスク */
 
 /* タスク周期の定義 */
 #define TRACER_PERIOD  (8 * 1000) /* トラッキングタスク:8msec周期 */
@@ -22,6 +23,7 @@ extern "C" {
 
 extern void main_task(intptr_t exinf);
 extern void tracer_task(intptr_t exinf);
+extern void calibration_task(intptr_t exinf);
 
 #endif /* TOPPERS_MACRO_ONLY */
 

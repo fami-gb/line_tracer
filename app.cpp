@@ -1,12 +1,12 @@
-#include <iostream>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
-#include <array>
+#include <stdio.h>
+#include <string>
 
 #include "kernel_cfg.h"
 #include "app.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "Pid.hpp"
 
 #include <libcpp/spike/IMU.h>
 #include <libcpp/spike/Display.h>
@@ -37,6 +37,8 @@ namespace {
   Clock g_clock;
   FILE *fp;
   int targetBrightness = 0;
+  std::chrono::milliseconds previousTime = std::chrono::milliseconds(0);
+  Pid g_pid(targetBrightness, 0.8, 0.01, 0.1); // PID制御のパラメータを設定
 }
 
 uint64_t msNow() { return g_clock.now() / 1000; }
@@ -126,52 +128,90 @@ void main_task(intptr_t unused) {
   fprintf(fp, "フォースセンサが押されました。\n");
   g_clock.reset();
   sta_cyc(TRACER_TASK_CYC); 
+  act_tsk(CALIBRATION_TASK);
   ext_tsk();
 }
 
-template <typename T>
-T clamp(T value, T min_val=static_cast<T>(-100), T max_val=static_cast<T>(100)) {
+int clamp(int value, int min_val=-100, int max_val=100) {
   return std::max(std::min(value, max_val), min_val);
-}
-
-int calculatePid(int error) {
-  static uint64_t previousTime = 0; // ms
-  static int previousError = 0;
-  static double integral = 0.0;
-  static double previousDerivative = 0.0;
-  const double alpha = 0.7;
-  const double Kp = 1.0; // 比例ゲイン
-  const double Ki = 0.1; // 積分ゲイン
-  const double Kd = 0.05; // 微分ゲイン
-
-  uint64_t currentTime = msNow();
-  double dt = previousTime ? (currentTime - previousTime) / 1000.0 : 0.008; // ms→秒に変換して経過時間を計算
-
-  integral += error * dt; // 積分項の計算
-  double derivative = (alpha * (error - previousError) / dt + (1 - alpha) * previousDerivative); // LPFを適用
-  previousError = error; // 前回の誤差を更新
-  previousDerivative = derivative; // 前回の微分を更新
-  previousTime = currentTime; // 前回の時間を更新
-
-  integral = clamp(integral); // 積分項の飽和制限
-  derivative = clamp(derivative); // 微分項の飽和制限
-
-  double control = Kp * error + Ki * integral + Kd * derivative;
-  return static_cast<int>(std::round(control));
 }
 
 void tracer_task(intptr_t unused) {
   if (g_forceSensor.isPressed(0.5f)) {
     stp_cyc(TRACER_TASK_CYC);
+
+    // pidゲインの再設定用タスク
+    act_tsk(CALIBRATION_TASK);
+    g_pid.Reset();
+
     ext_tsk();
     return;
   }
 
+  std::chrono::milliseconds now = std::chrono::milliseconds(msNow());
+  double dt = std::chrono::duration<double>(now - previousTime).count(); // 経過時間を秒に変換
+  previousTime = now;
+
   int error = g_colorSensor.getReflection() - targetBrightness;
-  int control = calculatePid(error);
+  int control = g_pid.calculate(error, dt);
 
   g_right_motor.setPower(clamp(30 + control));
   g_left_motor.setPower(clamp(30 - control));
 
+  ext_tsk();
+}
+
+/* 再キャリブレーション用タスク（act_tskで起動される） */
+void calibration_task(intptr_t unused) {
+  fprintf(fp, "\n===== 再キャリブレーション =====\n");
+
+  // 同じ場所で走らせるなら不要。(輝度の再設定が必要になったときにコメントアウトを外す)
+  // BrightnessCalibration();
+
+  
+  /*
+   * struct PidGain {
+   *    double p,i,d;
+   * }
+   *
+   * PidgGain getGain(){}
+   *
+   */
+  PidGain pidGain = g_pid.getPidGain();
+  char input[256];
+
+  fprintf(fp, "pidゲインの再設定を行います。\n");
+  fprintf(fp, "Pゲインを設定してください。(変更しない場合はEnter)\n");
+  if (fgets(input, sizeof(input), fp) != nullptr) {
+    if (input[0] != '\n' && input[0] != '\r') {
+      pidGain.kp_ = atof(input);
+    }
+  }
+  fprintf(fp, "Iゲインを設定してください。(変更しない場合はEnter)\n");
+  if (fgets(input, sizeof(input), fp) != nullptr) {
+    if (input[0] != '\n' && input[0] != '\r') {
+      pidGain.ki_ = atof(input);
+    }
+  }
+  fprintf(fp, "Dゲインを設定してください。(変更しない場合はEnter)\n");
+  if (fgets(input, sizeof(input), fp) != nullptr) {
+    if (input[0] != '\n' && input[0] != '\r') {
+      pidGain.kd_ = atof(input);
+    }
+  }
+
+  g_pid.setPidGain(pidGain.kp_, pidGain.ki_, pidGain.kd_);
+
+  // フォースセンサのボタンが押されるまで待機
+  fprintf(fp, "フォースセンサを押してください\n");
+  while(1) {
+    if (g_forceSensor.isPressed(0.5f)) {
+      while (g_forceSensor.isTouched()) { }
+      break;
+    }
+  }
+  fprintf(fp, "フォースセンサが押されました。\n");
+  g_clock.reset();
+  sta_cyc(TRACER_TASK_CYC);
   ext_tsk();
 }
